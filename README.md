@@ -1,6 +1,6 @@
 ## Project of an internet relay chat for academic purposes
 
-How to run:
+###### How to run:
 First use the command to compile:
 - make all
 
