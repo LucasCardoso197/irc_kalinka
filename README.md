@@ -1,4 +1,4 @@
-Project of an internet relay chat for academic purposes.
+## Project of an internet relay chat for academic purposes
 
 How to run:
 First use the command to compile:
