@@ -2,7 +2,9 @@
 #include <arpa/inet.h> 
 #include <unistd.h> 
 #include <string>
-#include <iostream> 
+#include <iostream>
+#include <chrono>
+#include <future>
 
 // Settings
 #define PORT 8080 
@@ -21,16 +23,47 @@ public:
 	int readResponse(void *buffer);
 };
 
+std::string WaitInput() {
+    std::string line;
+    std::getline(std::cin, line);
+    return line;
+}
+
+std::string ReadResponse(Client c){
+	char buffer[MESSAGE_SIZE] = {0};
+	c.readResponse(buffer);
+	std::string line(buffer);
+	//fprintf(stderr, "socket() failed: %m\n");
+	return line;
+}
+
 int main(int argc, char const *argv[]) 
 { 
 	Client c;
-	std::string input = "This is a random message";
-	char buffer[MESSAGE_SIZE] = {0};
-	
+
 	if(c.connectToServer("127.0.0.1") == -1) return -1;
-	c.sendMessage(input);
-	c.readResponse(buffer);
-	std::cout << buffer << std::endl;
+
+	auto inputFuture = std::async(std::launch::async, WaitInput);
+	//auto readFuture = std::async(std::launch::async, ReadResponse, c);
+
+    while (true) {
+    	
+        if (inputFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            auto line = inputFuture.get();
+            std::cout << "you wrote " << line << std::endl;
+            c.sendMessage(line);
+            inputFuture = std::async(std::launch::async, WaitInput);
+        }
+
+        /*if (readFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            auto line = readFuture.get();
+            std::cout << "recebeu " << line << std::endl;
+            readFuture = std::async(std::launch::async, ReadResponse, c);
+        }*/
+
+        std::cout << "waiting..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 	
 	return 0; 
 }
@@ -81,5 +114,5 @@ int Client::sendMessage(std::string message){
 }
 
 int Client::readResponse(void *buffer){
-	return read(socket_fd, buffer, MESSAGE_SIZE);
+	return recv(socket_fd, buffer, MESSAGE_SIZE, MSG_DONTWAIT|MSG_PEEK);
 }

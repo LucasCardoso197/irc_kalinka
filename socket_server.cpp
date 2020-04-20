@@ -2,7 +2,9 @@
 #include <arpa/inet.h> 
 #include <unistd.h> 
 #include <string>
-#include <iostream> 
+#include <iostream>
+#include <chrono>
+#include <future>
 
 // Settings
 #define PORT 8080 
@@ -29,13 +31,13 @@ int main(int argc, char const *argv[]){
     std::string response = "Hello from server"; 
 
     if(s.setup() == -1) return -1;
-    while(true){
         s.listenForConnections();
+    while(true){
         s.readMessage(buffer);
         std::cout << "Client says: " << buffer << std::endl;
-        s.sendResponse(response);
-        s.closeConnection();
+        //s.sendResponse(response);
     }
+        s.closeConnection();
 
     return 0; 
 }
