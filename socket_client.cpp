@@ -22,7 +22,7 @@ public:
 	~Client();
 	int connectToServer(const char *domain);
 	int sendMessage(std::string message);
-	int readResponse(void *buffer);
+	int readMessage(void *buffer);
 	int getFd();
 };
 
@@ -58,7 +58,7 @@ int main(int argc, char const *argv[])
         // if the poll returns >0, there is a message to read
         if (pollResult > 0) {
             char buffer[MESSAGE_SIZE] = {0};
-            c.readResponse(buffer);
+            c.readMessage(buffer);
             std::cout << "Message received:\n" << buffer << std::endl << std::endl;
         }
 
@@ -130,7 +130,7 @@ int Client::sendMessage(std::string message){
 	return send(socket_fd, message.c_str(), message.length(), 0);
 }
 
-int Client::readResponse(void *buffer){
+int Client::readMessage(void *buffer){
 	return read(socket_fd, buffer, MESSAGE_SIZE);
 }
 

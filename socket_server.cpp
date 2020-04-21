@@ -22,7 +22,7 @@ public:
     ~Server();
     int setup();
     int listenForConnections();
-	int sendResponse(std::string message);
+	int sendMessage(std::string message);
 	int readMessage(void *buffer);
     void closeConnection();
     int getListenFd();
@@ -74,7 +74,7 @@ int main(int argc, char const *argv[]){
             // split the message in n parts using the MESSAGE_SIZE
             int offset = 0;
             while ( (int)line.length() - offset > 0) {
-                s.sendResponse(line.substr(offset, MESSAGE_SIZE));
+                s.sendMessage(line.substr(offset, MESSAGE_SIZE));
                 offset += MESSAGE_SIZE;
             }
 
@@ -152,7 +152,7 @@ int Server::listenForConnections(){
     std::cout << "Conection established, ready to send and receive messages." << std::endl;
 }
 
-int Server::sendResponse(std::string message){
+int Server::sendMessage(std::string message){
 	if(listen_socket_fd == 0){
 		std::cerr << "Please listen for connections before sending messages." << std::endl;
 		return -1;
