@@ -70,10 +70,17 @@ int main(int argc, char const *argv[]){
 
             // get the result and send it
             auto line = waitInput.get();
-            std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
-            s.sendResponse(line);
 
-            // run the task again
+            // split the message in n parts using the MESSAGE_SIZE
+            int offset = 0;
+            while ( (int)line.length() - offset > 0) {
+                s.sendResponse(line.substr(offset, MESSAGE_SIZE));
+                offset += MESSAGE_SIZE;
+            }
+
+            std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
+
+            // run the asynchronous function again
             waitInput = std::async(std::launch::async, WaitInput);
         }
     }
