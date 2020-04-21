@@ -2,11 +2,15 @@
 #include <arpa/inet.h> 
 #include <unistd.h> 
 #include <string>
-#include <iostream> 
+#include <iostream>
+#include <chrono>
+#include <future>
+#include <poll.h>
 
 // Settings
 #define PORT 8080 
 #define MESSAGE_SIZE 4096
+#define LOOP_INTERVAL 100
 
 class Server
 {
@@ -21,21 +25,68 @@ public:
 	int sendResponse(std::string message);
 	int readMessage(void *buffer);
     void closeConnection();
+    int getListenFd();
 };
 
-int main(int argc, char const *argv[]){
-    Server s;
-    char buffer[MESSAGE_SIZE] = {0}; 
-    std::string response = "Hello from server"; 
+// function to get user input asynchronously
+std::string WaitInput() {
+    std::string line;
+    std::getline(std::cin, line);
+    return line;
+}
 
+int main(int argc, char const *argv[]){
+    // create and setup the server
+    Server s;
     if(s.setup() == -1) return -1;
-    while(true){
-        s.listenForConnections();
-        s.readMessage(buffer);
-        std::cout << "Client says: " << buffer << std::endl;
-        s.sendResponse(response);
-        s.closeConnection();
+
+    // wait for client connection
+    s.listenForConnections();
+
+    // initialize socket poll struct
+    struct pollfd fds[1];
+    fds[0].fd = s.getListenFd();
+    fds[0].events = 0;
+    fds[0].events |= POLLIN;
+
+    // run asynchronous function to get user input
+    auto waitInput = std::async(std::launch::async, WaitInput);
+
+    // begin socket loop
+    while (true) {
+
+        // poll during the LOOP_INTERVAL
+        int pollResult = poll(fds, 1, LOOP_INTERVAL);
+
+        // if the poll returns >0, there is a message to read
+        if (pollResult > 0) {
+            char buffer[MESSAGE_SIZE] = {0};
+            s.readMessage(buffer);
+            std::cout << "Message received:\n" << buffer << std::endl << std::endl;
+        }
+
+        // check if the asynchronous task has a result
+        if (waitInput.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+
+            // get the result and send it
+            auto line = waitInput.get();
+
+            // split the message in n parts using the MESSAGE_SIZE
+            int offset = 0;
+            while ( (int)line.length() - offset > 0) {
+                s.sendResponse(line.substr(offset, MESSAGE_SIZE));
+                offset += MESSAGE_SIZE;
+            }
+
+            std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
+
+            // run the asynchronous function again
+            waitInput = std::async(std::launch::async, WaitInput);
+        }
     }
+    
+    // close the connection
+    s.closeConnection();
 
     return 0; 
 }
@@ -117,4 +168,8 @@ void Server::closeConnection(){
     if(listen_socket_fd != 0)
         close(listen_socket_fd);
     listen_socket_fd = 0;
+}
+
+int Server::getListenFd(){
+    return listen_socket_fd;
 }

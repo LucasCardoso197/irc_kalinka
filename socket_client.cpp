@@ -2,11 +2,15 @@
 #include <arpa/inet.h> 
 #include <unistd.h> 
 #include <string>
-#include <iostream> 
+#include <iostream>
+#include <chrono>
+#include <future>
+#include <poll.h>
 
 // Settings
 #define PORT 8080 
 #define MESSAGE_SIZE 4096
+#define LOOP_INTERVAL 100
 
 class Client
 {
@@ -19,18 +23,64 @@ public:
 	int connectToServer(const char *domain);
 	int sendMessage(std::string message);
 	int readResponse(void *buffer);
+	int getFd();
 };
+
+std::string WaitInput() {
+    std::string line;
+    std::getline(std::cin, line);
+    return line;
+}
 
 int main(int argc, char const *argv[]) 
 { 
+	// create the client object
 	Client c;
-	std::string input = "This is a random message";
-	char buffer[MESSAGE_SIZE] = {0};
-	
+
+	// connect to server
 	if(c.connectToServer("127.0.0.1") == -1) return -1;
-	c.sendMessage(input);
-	c.readResponse(buffer);
-	std::cout << buffer << std::endl;
+
+	// initialize socket poll struct
+    struct pollfd fds[1];
+    fds[0].fd = c.getFd();
+    fds[0].events = 0;
+    fds[0].events |= POLLIN;
+
+    // run asynchronous function to get user input
+    auto waitInput = std::async(std::launch::async, WaitInput);
+
+    // begin socket loop
+    while (true) {
+
+        // poll during the LOOP_INTERVAL
+        int pollResult = poll(fds, 1, LOOP_INTERVAL);
+
+        // if the poll returns >0, there is a message to read
+        if (pollResult > 0) {
+            char buffer[MESSAGE_SIZE] = {0};
+            c.readResponse(buffer);
+            std::cout << "Message received:\n" << buffer << std::endl << std::endl;
+        }
+
+        // check if the asynchronous task has a result
+        if (waitInput.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+
+            // get the result and send it
+            auto line = waitInput.get();
+
+            // split the message in n parts using the MESSAGE_SIZE
+           	int offset = 0;
+           	while ( (int)line.length() - offset > 0) {
+            	c.sendMessage(line.substr(offset, MESSAGE_SIZE));
+            	offset += MESSAGE_SIZE;
+           	}
+
+          	std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
+
+            // run the asynchronous function again
+            waitInput = std::async(std::launch::async, WaitInput);
+        }
+    }
 	
 	return 0; 
 }
@@ -82,4 +132,8 @@ int Client::sendMessage(std::string message){
 
 int Client::readResponse(void *buffer){
 	return read(socket_fd, buffer, MESSAGE_SIZE);
+}
+
+int Client::getFd(){
+	return socket_fd;
 }
