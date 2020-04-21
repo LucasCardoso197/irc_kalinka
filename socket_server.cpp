@@ -6,6 +6,7 @@
 #include <chrono>
 #include <future>
 #include <poll.h>
+#include <string.h>
 
 // Settings
 #define PORT 8080 
@@ -62,6 +63,14 @@ int main(int argc, char const *argv[]){
         if (pollResult > 0) {
             char buffer[MESSAGE_SIZE] = {0};
             s.readMessage(buffer);
+            
+            // check for commands
+            if (buffer[0] == '/') {
+                if (strcmp(buffer, "/quit") == 0) {
+                    std::cout << "Client has disconnected\n";
+                    break;
+                }
+            }
             std::cout << "Message received:\n" << buffer << std::endl << std::endl;
         }
 

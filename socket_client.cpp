@@ -50,7 +50,7 @@ int main(int argc, char const *argv[])
     auto waitInput = std::async(std::launch::async, WaitInput);
 
     // begin socket loop
-    while (true) {
+    while (!std::cin.eof()) {
 
         // poll during the LOOP_INTERVAL
         int pollResult = poll(fds, 1, LOOP_INTERVAL);
@@ -67,6 +67,15 @@ int main(int argc, char const *argv[])
 
             // get the result and send it
             auto line = waitInput.get();
+
+			// check for commands
+			if (line.front() == '/') {
+				if (line.compare("/quit") == 0) {
+					c.sendMessage(line);
+					std::cout << "Disconnecting...\n";
+					break;
+				}
+			}
 
             // split the message in n parts using the MESSAGE_SIZE
            	int offset = 0;
