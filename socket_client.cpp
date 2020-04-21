@@ -5,10 +5,12 @@
 #include <iostream>
 #include <chrono>
 #include <future>
+#include <poll.h>
 
 // Settings
 #define PORT 8080 
 #define MESSAGE_SIZE 4096
+#define LOOP_INTERVAL 100
 
 class Client
 {
@@ -21,6 +23,7 @@ public:
 	int connectToServer(const char *domain);
 	int sendMessage(std::string message);
 	int readResponse(void *buffer);
+	int getFd();
 };
 
 std::string WaitInput() {
@@ -29,40 +32,47 @@ std::string WaitInput() {
     return line;
 }
 
-std::string ReadResponse(Client c){
-	char buffer[MESSAGE_SIZE] = {0};
-	c.readResponse(buffer);
-	std::string line(buffer);
-	//fprintf(stderr, "socket() failed: %m\n");
-	return line;
-}
-
 int main(int argc, char const *argv[]) 
 { 
+	// create the client object
 	Client c;
 
+	// connect to server
 	if(c.connectToServer("127.0.0.1") == -1) return -1;
 
-	auto inputFuture = std::async(std::launch::async, WaitInput);
-	//auto readFuture = std::async(std::launch::async, ReadResponse, c);
+	// initialize socket poll struct
+    struct pollfd fds[1];
+    fds[0].fd = c.getFd();
+    fds[0].events = 0;
+    fds[0].events |= POLLIN;
 
+    // run asynchronous function to get user input
+    auto waitInput = std::async(std::launch::async, WaitInput);
+
+    // begin socket loop
     while (true) {
-    	
-        if (inputFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-            auto line = inputFuture.get();
-            std::cout << "you wrote " << line << std::endl;
-            c.sendMessage(line);
-            inputFuture = std::async(std::launch::async, WaitInput);
+
+        // poll during the LOOP_INTERVAL
+        int pollResult = poll(fds, 1, LOOP_INTERVAL);
+
+        // if the poll returns >0, there is a message to read
+        if (pollResult > 0) {
+            char buffer[MESSAGE_SIZE] = {0};
+            c.readResponse(buffer);
+            std::cout << "Message received:\n" << buffer << std::endl << std::endl;
         }
 
-        /*if (readFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-            auto line = readFuture.get();
-            std::cout << "recebeu " << line << std::endl;
-            readFuture = std::async(std::launch::async, ReadResponse, c);
-        }*/
+        // check if the asynchronous task has a result
+        if (waitInput.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 
-        std::cout << "waiting..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+            // get the result and send it
+            auto line = waitInput.get();
+            std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
+            c.sendMessage(line);
+
+            // run the task again
+            waitInput = std::async(std::launch::async, WaitInput);
+        }
     }
 	
 	return 0; 
@@ -114,5 +124,9 @@ int Client::sendMessage(std::string message){
 }
 
 int Client::readResponse(void *buffer){
-	return recv(socket_fd, buffer, MESSAGE_SIZE, MSG_DONTWAIT|MSG_PEEK);
+	return read(socket_fd, buffer, MESSAGE_SIZE);
+}
+
+int Client::getFd(){
+	return socket_fd;
 }
