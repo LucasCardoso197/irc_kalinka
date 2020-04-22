@@ -68,6 +68,9 @@ int main(int argc, char const *argv[])
             // get the result and send it
             auto line = waitInput.get();
 
+			// check for eof (ctrl+d)
+			if (line.front() == EOF) break;
+
 			// check for commands
 			if (line.front() == '/') {
 				if (line.compare("/quit") == 0) {
@@ -84,7 +87,8 @@ int main(int argc, char const *argv[])
             	offset += MESSAGE_SIZE;
            	}
 
-          	std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
+			if (!line.empty())
+          		std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
 
             // run the asynchronous function again
             waitInput = std::async(std::launch::async, WaitInput);

@@ -62,8 +62,11 @@ int main(int argc, char const *argv[]){
         // if the poll returns >0, there is a message to read
         if (pollResult > 0) {
             char buffer[MESSAGE_SIZE] = {0};
-            s.readMessage(buffer);
-            
+            if (s.readMessage(buffer) < 1) {
+                std::cout << "Client has disconnected\n";   
+                break; 
+            }
+
             // check for commands
             if (buffer[0] == '/') {
                 if (strcmp(buffer, "/quit") == 0) {
