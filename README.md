@@ -7,7 +7,11 @@ First use the command to compile:
 Run server first, to liston for connections:
 - make run_server
 
-Then run the client as many times as you want on another terminal:
+Then run the client on another terminal:
 - make run_client
 
-To close the server use ^C(Ctrl+C).
+When both the server and client are open, they can exchange messages normally by just typing the message on the terminal and pressing enter.
+
+Client commands:
+- close connection and finish the program:
+- /quit or Ctrl + D
