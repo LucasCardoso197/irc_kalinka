@@ -14,4 +14,10 @@ When both the server and client are open, they can exchange messages normally by
 
 Client commands:
 - close connection and finish the program:
-- /quit or Ctrl + D
+  - /quit or Ctrl + D
+
+Operating System:
+- Ubuntu 18.04 (Bionic Beaver)
+
+Compiler:
+- gcc (Ubuntu 7.3.0-27ubuntu1~18.04) 7.3.0
