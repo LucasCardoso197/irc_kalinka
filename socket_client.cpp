@@ -58,7 +58,10 @@ int main(int argc, char const *argv[])
         // if the poll returns >0, there is a message to read
         if (pollResult > 0) {
             char buffer[MESSAGE_SIZE] = {0};
-            c.readMessage(buffer);
+            if(c.readMessage(buffer) == 0){
+				std::cout << "Server closed, closing application." << std::endl;
+				exit(1);
+			}
             std::cout << "Message received:\n" << buffer << std::endl << std::endl;
         }
 
