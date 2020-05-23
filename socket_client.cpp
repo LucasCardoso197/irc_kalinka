@@ -101,7 +101,7 @@ int main(int argc, char const *argv[])
 				std::cout << "Server closed, closing application." << std::endl;
 				exit(1);
 			}
-            std::cout << "Message received:\n" << buffer << std::endl << std::endl;
+            std::cout << "Message received:" << std::endl << buffer << std::endl << std::endl;
         }
 
         // check if the asynchronous task has a result
@@ -117,7 +117,7 @@ int main(int argc, char const *argv[])
 			if (line.front() == '/') {
 				if (line.compare("/quit") == 0) {
 					c.sendMessage(line);
-					std::cout << "Disconnecting...\n";
+					std::cout << "Disconnecting..." << std::endl;
 					break;
 				}
 			}
@@ -129,8 +129,7 @@ int main(int argc, char const *argv[])
             	offset += MESSAGE_SIZE;
            	}
 
-			if (!line.empty())
-          		std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
+			std::cout << std::endl << "Message sent:" << std::endl << line << std::endl << std::endl;
 
             // run the asynchronous function again
             waitInput = std::async(std::launch::async, WaitInput);
@@ -173,7 +172,7 @@ int Client::connectToServer(const char *domain){
 		return -1; 
 	}
 	
-	std::cout << "Connected to " << domain << std::endl;
+	std::cout << "Connected to " << domain << std::endl << std::endl;
 	return 0;
 }
 
