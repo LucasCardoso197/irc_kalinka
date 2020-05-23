@@ -32,13 +32,52 @@ std::string WaitInput() {
     return line;
 }
 
+void RunCommand(std::string line);
+
 int main(int argc, char const *argv[]) 
 { 
+	// client welcome message
+	std::cout << "*************************" << std::endl;
+	std::cout << "* Welcome to IRC Client *" << std::endl;
+	std::cout << "*************************" << std::endl;
+
 	// create the client object
 	Client c;
 
-	// connect to server
-	if(c.connectToServer("127.0.0.1") == -1) return -1;
+	// connection loop
+	while (true) {
+		std::cout << std::endl << "Please use '/connect' or '/connect [server-address]' to start" << std::endl << std::endl;
+
+		// read a line		
+		std::string line;
+    	std::getline(std::cin, line);
+
+    	// analyze the input
+    	if (line.front() == '/') {
+    		// check quit command
+    		if (line.compare("/quit") == 0) {
+    			std::cout << "Closing client" << std::endl;
+    			return 0;
+    		}
+    		// check connect command
+    		else if (line.compare("/connect") == 0) {
+				if(c.connectToServer("127.0.0.1") == 0) 
+					break;
+    		}
+    		// check connect [server-address] command
+    		else if (line.compare(0, 9, "/connect ") == 0) {
+    			if(c.connectToServer(line.substr(9, 16).c_str()) == 0) 
+					break;
+    		}
+    		else {
+    			std::cout << "Invalid command" << std::endl;
+    		}
+    	}
+    	else {
+    		std::cout << "Please connect to send messages" << std::endl;
+    	}
+		
+	}
 
 	// initialize socket poll struct
     struct pollfd fds[1];
