@@ -33,6 +33,7 @@ public:
 	int selectSocket();
 	int connectToNewClient();
 	int sendMessage(std::string message, int socket_fd);
+	void broadcastMessage(std::string message);
 	int readMessage(void *buffer, int *clientIndex);
 };
 
@@ -46,15 +47,10 @@ std::string WaitInput() {
 int main(int argc, char const *argv[]){
 	int max, activityType, messageType, i=0;
 	char msg_buffer[MESSAGE_SIZE];
+
 	// create and setup the server
 	Server s;
 	if(s.setup() == -1) return -1;
-
-	// Apenas testando usuários
-	std::string users[MAX_CLIENTS];
-	users[0] = "lucas";
-	users[1] = "cesar";
-	users[2] = "rafael";
 	
 	
 	while (true){
@@ -66,8 +62,10 @@ int main(int argc, char const *argv[]){
 		else if(activityType == S_MESSAGE){
 			// Receive message
 			messageType = s.readMessage(msg_buffer, &i);
-            if(messageType != DC_MESSAGE)
-				std::cout << users[i] << ": " << msg_buffer << std::endl;
+            if(messageType != DC_MESSAGE) {
+				std::cout << "User " << i << ": " << msg_buffer << std::endl;
+				s.broadcastMessage("User " + std::to_string(i) + ": " + msg_buffer);
+            }
 		}
 	}
 
@@ -186,10 +184,20 @@ int Server::connectToNewClient(){
 			break;
 		}
 	}
+
+	return 0;
 }
 
 int Server::sendMessage(std::string message, int socket_fd){
 	return send(socket_fd, message.c_str(), message.length(), 0);
+}
+
+void Server::broadcastMessage(std::string message) {
+	for(int i=0; i<MAX_CLIENTS; i++){
+		if(client_socket[i] != 0){
+			this->sendMessage(message, client_socket[i]);
+		}
+	}
 }
 
 int Server::readMessage(void *buffer, int *clientIndex){
@@ -214,10 +222,10 @@ int Server::readMessage(void *buffer, int *clientIndex){
 				return DC_MESSAGE;
 			}
 			else {
-				this->sendMessage("OK", sd);
 				aux[valread] = '\0';
 				return TXT_MESSAGE;
 			}
 		}
 	}
+	return 0;
 }
