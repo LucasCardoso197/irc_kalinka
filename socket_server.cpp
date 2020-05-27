@@ -34,6 +34,7 @@ public:
 	int connectToNewClient();
 	int sendMessage(std::string message, int socket_fd);
 	void broadcastMessage(std::string message);
+	int sendMessageUser(std::string message, int user);
 	int readMessage(void *buffer, int *clientIndex);
 };
 
@@ -63,8 +64,22 @@ int main(int argc, char const *argv[]){
 			// Receive message
 			messageType = s.readMessage(msg_buffer, &i);
             if(messageType != DC_MESSAGE) {
-				std::cout << "User " << i << ": " << msg_buffer << std::endl;
-				s.broadcastMessage("User " + std::to_string(i) + ": " + msg_buffer);
+            	// convert to string
+            	std::string line(msg_buffer);
+				std::cout << "User " << i << ": " << line << std::endl;
+
+            	// check for commands
+            	if (line.front() == '/') {
+            		if (line.compare("/ping") == 0) {
+            			s.sendMessageUser("Server: pong", i);
+            			std::cout << "Pong sent to User " << i  << std::endl << std::endl;
+            		}
+            	} 
+            	else {
+            	// if it is not a command, just broadcast to every client
+            		s.broadcastMessage("User " + std::to_string(i) + ": " + line);
+            		std::cout << "Message broadcasted"  << std::endl << std::endl;
+            	}
             }
 		}
 	}
@@ -198,6 +213,10 @@ void Server::broadcastMessage(std::string message) {
 			this->sendMessage(message, client_socket[i]);
 		}
 	}
+}
+
+int Server::sendMessageUser(std::string message, int user){
+	return send(client_socket[user], message.c_str(), message.length(), 0);
 }
 
 int Server::readMessage(void *buffer, int *clientIndex){

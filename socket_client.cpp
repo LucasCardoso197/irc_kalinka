@@ -79,7 +79,7 @@ int main(int argc, char const *argv[])
 					break;
     		}
     		else {
-    			std::cout << "Invalid command" << std::endl;
+    			std::cout << "Invalid command" << std::endl << std::endl;
     		}
     	}
     	else {
@@ -106,7 +106,7 @@ int main(int argc, char const *argv[])
         // if the poll returns >0, there is a message to read
         if (pollResult > 0) {
             char buffer[MESSAGE_SIZE] = {0};
-            if(c.readMessage(buffer) == 0){
+            if (c.readMessage(buffer) == 0){
 				std::cout << "Server closed, closing application." << std::endl;
 				exit(1);
 			}
@@ -124,21 +124,29 @@ int main(int argc, char const *argv[])
 
 			// check for commands
 			if (line.front() == '/') {
+				
 				if (line.compare("/quit") == 0) {
 					c.sendMessage(line);
 					std::cout << "Disconnecting..." << std::endl;
 					break;
 				}
+				else if (line.compare("/ping") == 0) {
+					c.sendMessage(line);
+				}
+				else {
+    				std::cout << "Invalid command" << std::endl << std::endl;
+    			}
+			} else {
+
+	            // split the message in n parts using the MESSAGE_SIZE
+	           	int offset = 0;
+	           	while ( (int)line.length() - offset > 0) {
+	            	c.sendMessage(line.substr(offset, MESSAGE_SIZE));
+	            	offset += MESSAGE_SIZE;
+	           	}
+
+				std::cout << std::endl << "Message sent:" << std::endl << line << std::endl << std::endl;
 			}
-
-            // split the message in n parts using the MESSAGE_SIZE
-           	int offset = 0;
-           	while ( (int)line.length() - offset > 0) {
-            	c.sendMessage(line.substr(offset, MESSAGE_SIZE));
-            	offset += MESSAGE_SIZE;
-           	}
-
-			std::cout << std::endl << "Message sent:" << std::endl << line << std::endl << std::endl;
 
             // run the asynchronous function again
             waitInput = std::async(std::launch::async, WaitInput);
