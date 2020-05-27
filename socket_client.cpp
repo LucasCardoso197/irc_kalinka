@@ -6,6 +6,7 @@
 #include <chrono>
 #include <future>
 #include <poll.h>
+#include <csignal>
 
 // Settings
 #define PORT 8080 
@@ -34,8 +35,16 @@ std::string WaitInput() {
 
 void RunCommand(std::string line);
 
+void signalHandler( int signum ) {
+	std::cout << "Interrupt signal (" << signum << ") received.\n";
+	std::cout << "To exit the program, enter \"/quit\" or press CTRL+D\n";
+}
+
 int main(int argc, char const *argv[]) 
 { 
+	// associate SIGINT with signalHandler function
+	signal(SIGINT, signalHandler);
+
 	// client welcome message
 	std::cout << "*************************" << std::endl;
 	std::cout << "* Welcome to IRC Client *" << std::endl;
