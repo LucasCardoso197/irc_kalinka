@@ -208,9 +208,26 @@ int Server::sendMessage(std::string message, int socket_fd){
 }
 
 void Server::broadcastMessage(std::string message) {
+	int error_flag;
+	
 	for(int i=0; i<MAX_CLIENTS; i++){
-		if(client_socket[i] != 0){
-			this->sendMessage(message, client_socket[i]);
+		if (client_socket[i] != 0) {
+			error_flag = -1;
+
+			// message sending attempts loop
+			for(int j=0; j<5 && error_flag == -1; j++) {
+				error_flag = this->sendMessage(message, client_socket[i]);
+				std::cout << "error flag: " << error_flag << " \n";
+				
+				if (error_flag != -1)
+					std::cout << "Message sent successfully to socket " << client_socket[i] << " after " << j+1 << " try(ies)\n";
+				else {
+					std::cout << "Message failed to reach socket " << client_socket[i] << " after " << j+1 << "try(ies)\n";
+				}
+			}
+			if (error_flag == -1) 
+				std::cout << "Closing socket " << client_socket[i] << "\n";
+				// close()
 		}
 	}
 }
