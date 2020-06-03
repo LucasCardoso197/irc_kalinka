@@ -13,8 +13,13 @@ Then run the client on another terminal:
 When both the server and client are open, they can exchange messages normally by just typing the message on the terminal and pressing enter.
 
 Client commands:
+- connect to server:
+  - /connect
+- ping server:
+  - /ping
 - close connection and finish the program:
-  - /quit or Ctrl + D
+  - /quit or Ctrl + D  
+
 
 Operating System:
 - Ubuntu 18.04 (Bionic Beaver)
