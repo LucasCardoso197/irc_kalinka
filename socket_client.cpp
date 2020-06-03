@@ -110,7 +110,7 @@ int main(int argc, char const *argv[])
 				std::cout << "Server closed, closing application." << std::endl;
 				exit(1);
 			}
-            std::cout << "Message received:" << std::endl << buffer << std::endl << std::endl;
+            std::cout << buffer << std::endl << std::endl;
         }
 
         // check if the asynchronous task has a result
@@ -145,7 +145,7 @@ int main(int argc, char const *argv[])
 	            	offset += MESSAGE_SIZE;
 	           	}
 
-				std::cout << std::endl << "Message sent:" << std::endl << line << std::endl << std::endl;
+				//std::cout << std::endl << "Message sent:" << std::endl << line << std::endl << std::endl;
 			}
 
             // run the asynchronous function again
