@@ -4,13 +4,13 @@
 First use the command to compile:
 - make all
 
-Run server first, to liston for connections:
+Run server first, to listen for connections:
 - make run_server
 
 Then run the client on another terminal:
 - make run_client
 
-When both the server and client are open, they can exchange messages normally by just typing the message on the terminal and pressing enter.
+You can run up to 30 client programs. Once they're all connected, messages can be exchanged between clients through the server.
 
 Client commands:
 - connect to server:
