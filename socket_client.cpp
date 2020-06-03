@@ -6,6 +6,7 @@
 #include <chrono>
 #include <future>
 #include <poll.h>
+#include <csignal>
 
 // Settings
 #define PORT 8080 
@@ -32,13 +33,60 @@ std::string WaitInput() {
     return line;
 }
 
+void RunCommand(std::string line);
+
+void signalHandler( int signum ) {
+	std::cout << "Interrupt signal (" << signum << ") received.\n";
+	std::cout << "To exit the program, enter \"/quit\" or press CTRL+D\n";
+}
+
 int main(int argc, char const *argv[]) 
 { 
+	// associate SIGINT with signalHandler function
+	signal(SIGINT, signalHandler);
+
+	// client welcome message
+	std::cout << "*************************" << std::endl;
+	std::cout << "* Welcome to IRC Client *" << std::endl;
+	std::cout << "*************************" << std::endl;
+
 	// create the client object
 	Client c;
 
-	// connect to server
-	if(c.connectToServer("127.0.0.1") == -1) return -1;
+	// connection loop
+	while (true) {
+		std::cout << std::endl << "Please use '/connect' or '/connect [server-address]' to start" << std::endl << std::endl;
+
+		// read a line		
+		std::string line;
+    	std::getline(std::cin, line);
+
+    	// analyze the input
+    	if (line.front() == '/') {
+    		// check quit command
+    		if (line.compare("/quit") == 0) {
+    			std::cout << "Closing client" << std::endl;
+    			return 0;
+    		}
+    		// check connect command
+    		else if (line.compare("/connect") == 0) {
+				if(c.connectToServer("127.0.0.1") == 0) 
+					break;
+    		}
+    		// check connect [server-address] command
+    		else if (line.compare(0, 9, "/connect ") == 0) {
+    			if(c.connectToServer(line.substr(9, 16).c_str()) == 0) 
+					break;
+    		}
+    		else {
+    			std::cout << "Invalid command" << std::endl << std::endl;
+    		}
+    	}
+    	else {
+    		std::cout << "Please connect to send messages" << std::endl;
+    	}
+		
+	}
 
 	// initialize socket poll struct
     struct pollfd fds[1];
@@ -58,8 +106,11 @@ int main(int argc, char const *argv[])
         // if the poll returns >0, there is a message to read
         if (pollResult > 0) {
             char buffer[MESSAGE_SIZE] = {0};
-            c.readMessage(buffer);
-            std::cout << "Message received:\n" << buffer << std::endl << std::endl;
+            if (c.readMessage(buffer) == 0){
+				std::cout << "Server closed, closing application." << std::endl;
+				exit(1);
+			}
+            std::cout << "Message received:" << std::endl << buffer << std::endl << std::endl;
         }
 
         // check if the asynchronous task has a result
@@ -73,22 +124,29 @@ int main(int argc, char const *argv[])
 
 			// check for commands
 			if (line.front() == '/') {
+				
 				if (line.compare("/quit") == 0) {
 					c.sendMessage(line);
-					std::cout << "Disconnecting...\n";
+					std::cout << "Disconnecting..." << std::endl;
 					break;
 				}
+				else if (line.compare("/ping") == 0) {
+					c.sendMessage(line);
+				}
+				else {
+    				std::cout << "Invalid command" << std::endl << std::endl;
+    			}
+			} else {
+
+	            // split the message in n parts using the MESSAGE_SIZE
+	           	int offset = 0;
+	           	while ( (int)line.length() - offset > 0) {
+	            	c.sendMessage(line.substr(offset, MESSAGE_SIZE));
+	            	offset += MESSAGE_SIZE;
+	           	}
+
+				std::cout << std::endl << "Message sent:" << std::endl << line << std::endl << std::endl;
 			}
-
-            // split the message in n parts using the MESSAGE_SIZE
-           	int offset = 0;
-           	while ( (int)line.length() - offset > 0) {
-            	c.sendMessage(line.substr(offset, MESSAGE_SIZE));
-            	offset += MESSAGE_SIZE;
-           	}
-
-			if (!line.empty())
-          		std::cout << "\nMessage sent:\n" << line << std::endl << std::endl;
 
             // run the asynchronous function again
             waitInput = std::async(std::launch::async, WaitInput);
@@ -131,7 +189,7 @@ int Client::connectToServer(const char *domain){
 		return -1; 
 	}
 	
-	std::cout << "Connected to " << domain << std::endl;
+	std::cout << "Connected to " << domain << std::endl << std::endl;
 	return 0;
 }
 
