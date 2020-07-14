@@ -46,38 +46,71 @@ std::string WaitInput() {
 }
 
 int main(int argc, char const *argv[]){
-	int max, activityType, messageType, i=0;
+
+	// create work variables
+	int activityType, messageType, i=0;
 	char msg_buffer[MESSAGE_SIZE];
+
+	// string array to store user nicknames
+	std::string nicknames[MAX_CLIENTS];
 
 	// create and setup the server
 	Server s;
 	if(s.setup() == -1) return -1;
 	
-	
+	// server loop
 	while (true){
+
 		activityType = s.selectSocket();
+
+		// check for new client connection
 		if(activityType == S_CONNECTION){
 			// Receive connection
 			s.connectToNewClient();
 		}
+		// check for message
 		else if(activityType == S_MESSAGE){
+
 			// Receive message
 			messageType = s.readMessage(msg_buffer, &i);
             if(messageType != DC_MESSAGE) {
-            	// convert to string
+
+            	// convert to string and log
             	std::string line(msg_buffer);
-				std::cout << "User " << i << ": " << line << std::endl;
+            	if (!nicknames[i].empty())
+					std::cout << nicknames[i] << ": " << line << std::endl;
 
             	// check for commands
             	if (line.front() == '/') {
+
+            		// check for ping command
             		if (line.compare("/ping") == 0) {
             			s.sendMessageUser("Server: pong", i);
-            			std::cout << "Pong sent to User " << i  << std::endl << std::endl;
+            			std::cout << "Pong sent to user '" << nicknames[i] << "'" << std::endl << std::endl;
             		}
+            		// check for join command
+            		else if (line.compare(0, 6, "/join ") == 0) {
+            			std::cout << "Join channel " << line.substr(6, line.length()) << std::endl;
+            		}
+            		// check nickname command
+    				else if (line.compare(0, 10, "/nickname ") == 0) {
+    					// first nickname setup
+    					if (nicknames[i].empty()) {
+    						nicknames[i] = line.substr(10, -1);
+    						std::cout << "New connection nickname: " << nicknames[i] << std::endl << std::endl; 
+    					}
+    					// nickname changing
+    					else {
+    						std::cout << "User '" << nicknames[i] << "' changed his nickname to '" << line.substr(10, -1) << "'" << std::endl << std::endl;
+    						nicknames[i] = line.substr(10, -1);
+    						s.sendMessageUser("Nickname changed to '" + nicknames[i] + "'", i);
+    					}
+    					
+    				}
             	} 
             	else {
             	// if it is not a command, just broadcast to every client
-            		s.broadcastMessage("User " + std::to_string(i) + ": " + line);
+            		s.broadcastMessage(nicknames[i] + ": " + line);
             		std::cout << "Message broadcasted"  << std::endl << std::endl;
             	}
             }
@@ -195,7 +228,7 @@ int Server::connectToNewClient(){
 	for(int i=0; i<MAX_CLIENTS; i++){
 		if(client_socket[i] == 0){
 			client_socket[i] = new_socket;
-			std::cout << "Added new connection at " << i << std::endl << std::endl;
+			std::cout << "Added new connection at " << i << std::endl;
 			break;
 		}
 	}
