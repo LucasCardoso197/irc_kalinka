@@ -71,7 +71,7 @@ int main(int argc, char const *argv[])
     			return 0;
     		}
     		// check nickname command
-    		else if (line.compare(0, 10, "/nickname ") == 0) {
+    		else if (line.compare(0, 10, "/nickname ") == 0 && line.length() > 10) {
     			// check if nickname lenght is valid
     			if (line.length() > 60) {
     				std::cout << std::endl << "Please use a nickname with 50 or less characters" << std::endl;
@@ -166,11 +166,11 @@ int main(int argc, char const *argv[])
 					c.sendMessage(line);
 				}
 				// check for join command
-        		else if (line.compare(0, 6, "/join ") == 0) {
+        		else if (line.compare(0, 6, "/join ") == 0 && line.length() > 6) {
         			c.sendMessage(line);
         		}
         		// check nickname command
-	    		else if (line.compare(0, 10, "/nickname ") == 0) {
+	    		else if (line.compare(0, 10, "/nickname ") == 0 && line.length() > 10) {
 	    			// check if nickname lenght is valid
 	    			if (line.length() > 60) {
 	    				std::cout << std::endl << "Please use a nickname with 50 or less characters" << std::endl;

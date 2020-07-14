@@ -3,8 +3,7 @@
 #include <unistd.h> 
 #include <string>
 #include <iostream>
-#include <chrono>
-#include <future>
+#include <vector>
 #include <poll.h>
 #include <string.h>
 
@@ -13,7 +12,8 @@
 #define MESSAGE_SIZE 4096
 #define LOOP_INTERVAL 100
 #define MAX_CLIENTS 30
-// Códigos
+
+// Codes
 #define S_CONNECTION 1
 #define S_MESSAGE 2
 
@@ -42,13 +42,12 @@ class User {
 public:
 	std::string nickname;
 	int channel;
-	bool isAdmin;
 };
 
 class Channel {
 public:
 	std::string name;
-	int users[MAX_CLIENTS];
+	int admin;
 };
 
 int main(int argc, char const *argv[]){
@@ -57,8 +56,11 @@ int main(int argc, char const *argv[]){
 	int activityType, messageType, i=0;
 	char msg_buffer[MESSAGE_SIZE];
 
-	// Users array 
+	// users array 
 	User users[MAX_CLIENTS];
+
+	// channels vector
+	std::vector<Channel> channels;
 
 	// create and setup the server
 	Server s;
@@ -67,6 +69,7 @@ int main(int argc, char const *argv[]){
 	// server loop
 	while (true){
 
+		// select a socket and get the activity type
 		activityType = s.selectSocket();
 
 		// check for new client connection
@@ -96,7 +99,32 @@ int main(int argc, char const *argv[]){
             		}
             		// check for join command
             		else if (line.compare(0, 6, "/join ") == 0) {
-            			std::cout << "Join channel " << line.substr(6, line.length()) << std::endl;
+
+            			// reset this user channel
+            			users[i].channel = -1;
+
+            			// get the channel name
+            			std::string channelName = line.substr(6, line.length());
+
+            			// check if channel already exists
+            			for (int j = 0; j < channels.size(); j++) {
+            				if (channels[j].name.compare(channelName) == 0) {
+            					users[i].channel = j;
+            					std::cout << "User '" << users[i].nickname << "' joined the channel '" << channelName << "'" << std::endl << std::endl;
+            					s.sendMessageUser("You joined the channel '" + channelName + "'", i);
+            				}
+            			}
+
+            			// if could not find the channel, create a new one
+            			if (users[i].channel < 0) {
+            				Channel newChannel;
+            				newChannel.name = channelName;
+            				newChannel.admin = i;
+            				channels.push_back(newChannel);
+            				users[i].channel = channels.size() - 1;
+            				std::cout << "User '" << users[i].nickname << "' created and joined the channel '" << channelName << "'" << std::endl << std::endl;
+            				s.sendMessageUser("You created and joined the channel '" + channelName + "'", i);
+            			}
             		}
             		// check nickname command
     				else if (line.compare(0, 10, "/nickname ") == 0) {
@@ -115,15 +143,37 @@ int main(int argc, char const *argv[]){
     					
     				}
             	} 
+            	// if it is not a command, it is a common text message
             	else {
-            	// if it is not a command, just broadcast to every client
-            		s.broadcastMessage(nicknames[i] + ": " + line);
-            		std::cout << "Message broadcasted"  << std::endl << std::endl;
+            		// check if user has joined a channel
+            		if (users[i].channel >= 0) {
+
+            			// send message to all users in the same channel
+            			int userChannel = users[i].channel;
+            			for (int j = 0; j < MAX_CLIENTS; j++) {
+            				if (users[j].channel == userChannel) {
+            					s.sendMessageUser(users[i].nickname + ": " + line, j);
+            				}
+            			}
+            		}
+            		// if the user is not in a channel, just explain it
+            		else {
+            			std::cout << "User '" << users[i].nickname << "' has not joined a channel and can't send messages" << std::endl << std::endl;
+            			s.sendMessageUser("Please join a channel before sending messages", i);
+            		}
             	}
             }
+            // a user is disconnecting
             else {
-            	// if a user is disconnecting, forget his nickname
+            	// forget his nickname
             	users[i].nickname.clear();
+
+            	// revove his admin rights from any channels
+            	for (int j = 0; j < channels.size(); j++) {
+					if (channels[j].admin = i) {
+						channels[j].admin = -1;
+					}
+				}
             }
 		}
 	}
