@@ -167,13 +167,28 @@ int main(int argc, char const *argv[])
 				}
 				// check for join command
         		else if (line.compare(0, 6, "/join ") == 0 && line.length() > 6) {
-        			c.sendMessage(line);
+        			
+        			std::string channelName = line.substr(6, line.length());
+
+        			// verify if channel name is valid
+        			if (channelName.at(0) != '&' && channelName.at(0) != '#') {
+        				std::cout << std::endl << "The channel name must begin with either '&' or '#'" << std::endl << std::endl;
+        			}
+        			else if (channelName.find(' ') != std::string::npos || channelName.find(',') != std::string::npos) {
+        				std::cout << std::endl << "The channel name may not contain any spaces (' ') or commas (',')" << std::endl << std::endl;
+        			}
+        			else if (channelName.length() > 200) {
+        				std::cout << std::endl << "The channel name must have up to 200 characters" << std::endl << std::endl;
+        			}
+        			else {
+	        			c.sendMessage(line);
+	        		}
         		}
         		// check nickname command
 	    		else if (line.compare(0, 10, "/nickname ") == 0 && line.length() > 10) {
 	    			// check if nickname lenght is valid
 	    			if (line.length() > 60) {
-	    				std::cout << std::endl << "Please use a nickname with 50 or less characters" << std::endl;
+	    				std::cout << std::endl << "Please use a nickname with 50 or less characters" << std::endl << std::endl;
 	    			}
 	    			else {
 		    			nickname = line;

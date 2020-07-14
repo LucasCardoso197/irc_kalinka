@@ -117,10 +117,14 @@ int main(int argc, char const *argv[]){
 
             			// if could not find the channel, create a new one
             			if (users[i].channel < 0) {
+
+            				// create and add the new channel
             				Channel newChannel;
             				newChannel.name = channelName;
             				newChannel.admin = i;
             				channels.push_back(newChannel);
+
+            				// link the user to the channel
             				users[i].channel = channels.size() - 1;
             				std::cout << "User '" << users[i].nickname << "' created and joined the channel '" << channelName << "'" << std::endl << std::endl;
             				s.sendMessageUser("You created and joined the channel '" + channelName + "'", i);
@@ -151,7 +155,7 @@ int main(int argc, char const *argv[]){
             			// send message to all users in the same channel
             			int userChannel = users[i].channel;
             			for (int j = 0; j < MAX_CLIENTS; j++) {
-            				if (users[j].channel == userChannel) {
+            				if (!users[j].nickname.empty() && users[j].channel == userChannel) {
             					s.sendMessageUser(users[i].nickname + ": " + line, j);
             				}
             			}
