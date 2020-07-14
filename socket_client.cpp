@@ -27,13 +27,12 @@ public:
 	int getFd();
 };
 
+// function to get user input asynchronously
 std::string WaitInput() {
     std::string line;
     std::getline(std::cin, line);
     return line;
 }
-
-void RunCommand(std::string line);
 
 void signalHandler( int signum ) {
 	std::cout << "Interrupt signal (" << signum << ") received.\n";

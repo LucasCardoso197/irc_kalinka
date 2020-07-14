@@ -38,12 +38,18 @@ public:
 	int readMessage(void *buffer, int *clientIndex);
 };
 
-// function to get user input asynchronously
-std::string WaitInput() {
-	std::string line;
-	std::getline(std::cin, line);
-	return line;
-}
+class User {
+public:
+	std::string nickname;
+	int channel;
+	bool isAdmin;
+};
+
+class Channel {
+public:
+	std::string name;
+	int users[MAX_CLIENTS];
+};
 
 int main(int argc, char const *argv[]){
 
@@ -51,8 +57,8 @@ int main(int argc, char const *argv[]){
 	int activityType, messageType, i=0;
 	char msg_buffer[MESSAGE_SIZE];
 
-	// string array to store user nicknames
-	std::string nicknames[MAX_CLIENTS];
+	// Users array 
+	User users[MAX_CLIENTS];
 
 	// create and setup the server
 	Server s;
@@ -77,8 +83,8 @@ int main(int argc, char const *argv[]){
 
             	// convert to string and log
             	std::string line(msg_buffer);
-            	if (!nicknames[i].empty())
-					std::cout << nicknames[i] << ": " << line << std::endl;
+            	if (!users[i].nickname.empty())
+					std::cout << users[i].nickname << ": " << line << std::endl;
 
             	// check for commands
             	if (line.front() == '/') {
@@ -86,7 +92,7 @@ int main(int argc, char const *argv[]){
             		// check for ping command
             		if (line.compare("/ping") == 0) {
             			s.sendMessageUser("Server: pong", i);
-            			std::cout << "Pong sent to user '" << nicknames[i] << "'" << std::endl << std::endl;
+            			std::cout << "Pong sent to user '" << users[i].nickname << "'" << std::endl << std::endl;
             		}
             		// check for join command
             		else if (line.compare(0, 6, "/join ") == 0) {
@@ -94,16 +100,17 @@ int main(int argc, char const *argv[]){
             		}
             		// check nickname command
     				else if (line.compare(0, 10, "/nickname ") == 0) {
-    					// first nickname setup
-    					if (nicknames[i].empty()) {
-    						nicknames[i] = line.substr(10, -1);
-    						std::cout << "New connection nickname: " << nicknames[i] << std::endl << std::endl; 
+    					// new connection nickname
+    					if (users[i].nickname.empty()) {
+    						users[i].nickname = line.substr(10, -1);
+    						users[i].channel = -1;
+    						std::cout << "New connection nickname: " << users[i].nickname << std::endl << std::endl; 
     					}
     					// nickname changing
     					else {
-    						std::cout << "User '" << nicknames[i] << "' changed his nickname to '" << line.substr(10, -1) << "'" << std::endl << std::endl;
-    						nicknames[i] = line.substr(10, -1);
-    						s.sendMessageUser("Nickname changed to '" + nicknames[i] + "'", i);
+    						std::cout << "User '" << users[i].nickname << "' changed his nickname to '" << line.substr(10, -1) << "'" << std::endl << std::endl;
+    						users[i].nickname = line.substr(10, -1);
+    						s.sendMessageUser("Nickname changed to '" + users[i].nickname + "'", i);
     					}
     					
     				}
@@ -113,6 +120,10 @@ int main(int argc, char const *argv[]){
             		s.broadcastMessage(nicknames[i] + ": " + line);
             		std::cout << "Message broadcasted"  << std::endl << std::endl;
             	}
+            }
+            else {
+            	// if a user is disconnecting, forget his nickname
+            	users[i].nickname.clear();
             }
 		}
 	}
