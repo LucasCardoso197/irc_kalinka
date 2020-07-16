@@ -195,6 +195,10 @@ int main(int argc, char const *argv[])
 		    			c.sendMessage(line);
 	    			}
 	    		}
+				// check kick command
+				else if (line.compare(0, 6, "/kick ") == 0 && line.length() > 6) {
+					c.sendMessage(line);
+				}
 				else {
     				std::cout << "Invalid command" << std::endl << std::endl;
     			}
