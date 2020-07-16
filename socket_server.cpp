@@ -178,7 +178,20 @@ int main(int argc, char const *argv[])
 							//check if user is admin on said channel
 							if (channels[users[i].channel].admin == i)
 							{
-								// kick structure (TODO)
+								// get the user name
+								std::string userName = line.substr(6, line.length());
+								// search for user in the channel
+								int found = 0;
+								for (int j=0; j<MAX_CLIENTS; j++) {
+									if (users[j].nickname.compare(userName) == 0 && users[j].channel == users[i].channel) {
+										found = 1;
+										users[j].channel = -1;
+										s.sendMessageUser("You have been kicked from the channel", j);
+										s.sendMessageUser("User " + userName + " has been kicked from your channel", i);
+										break;
+									}
+								}
+								if (!found) s.sendMessageUser("User not found in your channel", i);
 							}
 							else {
 								s.sendMessageUser("You are not the admin of this channel", i);

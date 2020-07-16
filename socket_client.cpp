@@ -195,8 +195,21 @@ int main(int argc, char const *argv[])
 		    			c.sendMessage(line);
 	    			}
 	    		}
+				// Admin commands
 				// check kick command
 				else if (line.compare(0, 6, "/kick ") == 0 && line.length() > 6) {
+					c.sendMessage(line);
+				}
+				// check mute command
+				else if (line.compare(0, 6, "/mute ") == 0 && line.length() > 6) {
+					c.sendMessage(line);
+				}
+				// check unmute command
+				else if (line.compare(0, 8, "/unmute ") == 0 && line.length() > 8) {
+					c.sendMessage(line);
+				}
+				// check whois command
+				else if (line.compare(0, 6, "/whois ") == 0 && line.length() > 7) {
 					c.sendMessage(line);
 				}
 				else {
