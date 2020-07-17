@@ -35,7 +35,7 @@ public:
 	int connectToNewClient(int *j, std::string& ip);
 	int sendMessage(std::string message, int socket_fd);
 	void broadcastMessage(std::string message);
-	int sendMessageUser(std::string message, int user);
+	void sendMessageUser(std::string message, int user);
 	int readMessage(void *buffer, int *clientIndex);
 };
 
@@ -516,9 +516,27 @@ void Server::broadcastMessage(std::string message)
 	}
 }
 
-int Server::sendMessageUser(std::string message, int user)
+void Server::sendMessageUser(std::string message, int user)
 {
-	return send(client_socket[user], message.c_str(), message.length(), 0);
+	int error_flag = -1;
+
+	for (int k=0; k<5 && error_flag == -1; k++) 
+	{
+		error_flag = send(client_socket[user], message.c_str(), message.length(), 0);
+
+		if (error_flag != -1)
+			std::cout << "Message sent successfully to socket " << client_socket[user] << " after " << k + 1 << " try(ies)\n";
+		else
+		{
+			std::cout << "Message failed to reach socket " << client_socket[user] << " after " << k + 1 << "try(ies)\n";
+		}
+	}
+	if (error_flag == -1)
+	{
+		std::cout << "Closing socket " << client_socket[user] << "\n";
+		close(client_socket[user]);
+		client_socket[user] = 0;
+	}
 }
 
 int Server::readMessage(void *buffer, int *clientIndex)
