@@ -32,7 +32,7 @@ public:
 	~Server();
 	int setup();
 	int selectSocket();
-	int connectToNewClient();
+	int connectToNewClient(int *j, std::string& ip);
 	int sendMessage(std::string message, int socket_fd);
 	void broadcastMessage(std::string message);
 	int sendMessageUser(std::string message, int user);
@@ -43,6 +43,7 @@ class User
 {
 public:
 	std::string nickname;
+	std::string ip;
 	int channel;
 };
 
@@ -83,7 +84,10 @@ int main(int argc, char const *argv[])
 		if (activityType == S_CONNECTION)
 		{
 			// Receive connection
-			s.connectToNewClient();
+			std::string ip;
+			if (s.connectToNewClient(&i, ip) >= 0) {
+				users[i].ip = ip;
+			}
 		}
 		// check for message
 		else if (activityType == S_MESSAGE)
@@ -272,7 +276,18 @@ int main(int argc, char const *argv[])
 							//check if user is admin on said channel
 							if (channels[users[i].channel].admin == i)
 							{
-								// whois structure (TODO)
+								// get the user name
+								std::string userName = line.substr(7, line.length());
+								// search for user in the channel
+								int found = 0;
+								for (int j=0; j<MAX_CLIENTS; j++) {
+									if (users[j].nickname.compare(userName) == 0 && users[j].channel == users[i].channel) {
+										found = 1;
+										s.sendMessageUser(userName + "'s IP is " + users[j].ip, i);
+										break;
+									}
+								}
+								if (!found) s.sendMessageUser("User not found in your channel", i);
 							}
 							else {
 								s.sendMessageUser("You are not the admin of this channel", i);
@@ -314,13 +329,15 @@ int main(int argc, char const *argv[])
 				// forget his nickname
 				users[i].nickname.clear();
 
-				// revove his admin rights from any channels
+				// remove his admin rights from any channels
 				for (int j = 0; j < channels.size(); j++)
 				{
 					if (channels[j].admin = i)
 					{
 						channels[j].admin = -1;
 					}
+					// remove his mutes from every channel
+					channels[j].muted[i] = 0;
 				}
 			}
 		}
@@ -430,7 +447,7 @@ int Server::selectSocket()
 		return S_MESSAGE;
 }
 
-int Server::connectToNewClient()
+int Server::connectToNewClient(int *j, std::string& ip)
 {
 	int new_socket;
 	int addr_len = sizeof(address);
@@ -442,22 +459,21 @@ int Server::connectToNewClient()
 
 	std::cout << "New connection at IP: " << inet_ntoa(address.sin_addr) << std::endl;
 	std::cout << "At port " << ntohs(address.sin_port) << " and socket " << new_socket << std::endl;
+	ip = inet_ntoa(address.sin_addr);
 
 	// Sending welcome message
 	if (this->sendMessage("Welcome to IRC Kalinka!!", new_socket) <= 0)
 		std::cerr << "Error sending welcome message." << std::endl;
 
 	// Adding new connected socket to the list
-	for (int i = 0; i < MAX_CLIENTS; i++)
-	{
-		if (client_socket[i] == 0)
-		{
+	for (int i = 0; i < MAX_CLIENTS; i++){
+		if (client_socket[i] == 0){
 			client_socket[i] = new_socket;
 			std::cout << "Added new connection at " << i << std::endl;
+			*j = i;
 			break;
 		}
 	}
-
 	return 0;
 }
 
