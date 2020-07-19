@@ -39,6 +39,17 @@ void signalHandler( int signum ) {
 	std::cout << "To exit the program, enter \"/quit\" or press CTRL+D\n";
 }
 
+int isValidChannelName(std::string name){
+    if (name.at(0) != '&' && name.at(0) != '#')
+        return -1;
+    else if (name.find(' ') != std::string::npos || name.find(',') != std::string::npos)
+        return -2;
+    else if (name.length() > 200)
+        return -3;
+    else
+        return 1;
+}
+
 int main(int argc, char const *argv[]) 
 { 
 	// associate SIGINT with signalHandler function
@@ -171,18 +182,21 @@ int main(int argc, char const *argv[])
         			std::string channelName = line.substr(6, line.length());
 
         			// verify if channel name is valid
-        			if (channelName.at(0) != '&' && channelName.at(0) != '#') {
-        				std::cout << std::endl << "The channel name must begin with either '&' or '#'" << std::endl << std::endl;
-        			}
-        			else if (channelName.find(' ') != std::string::npos || channelName.find(',') != std::string::npos) {
-        				std::cout << std::endl << "The channel name may not contain any spaces (' ') or commas (',')" << std::endl << std::endl;
-        			}
-        			else if (channelName.length() > 200) {
-        				std::cout << std::endl << "The channel name must have up to 200 characters" << std::endl << std::endl;
-        			}
-        			else {
-	        			c.sendMessage(line);
-	        		}
+					int aux = isValidChannelName(channelName);
+					switch(aux) {
+						case -1:
+							std::cout << std::endl << "The channel name must begin with either '&' or '#'" << std::endl << std::endl;
+							break;
+						case -2:
+							std::cout << std::endl << "The channel name may not contain any spaces (' ') or commas (',')" << std::endl << std::endl;
+							break;
+						case -3:
+							std::cout << std::endl << "The channel name must have up to 200 characters" << std::endl << std::endl;
+							break;
+						case 1:
+							c.sendMessage(line);
+							break;
+					}
         		}
         		// check nickname command
 	    		else if (line.compare(0, 10, "/nickname ") == 0 && line.length() > 10) {
@@ -211,6 +225,34 @@ int main(int argc, char const *argv[])
 				// check whois command
 				else if (line.compare(0, 7, "/whois ") == 0 && line.length() > 7) {
 					c.sendMessage(line);
+				}
+				else if (line.compare(0, 6, "/mode ") == 0 && line.length() > 6){
+					std::string channelName, arguments;
+					if(line.find(' ', 6) != std::string::npos){
+						channelName = line.substr(6, line.find(' ', 6)-6);
+						arguments = line.substr(line.find(' ', 6), std::string::npos);
+						if(isValidChannelName(channelName) == 1){
+							if(arguments.find("+i") == std::string::npos && line.find("-i") == std::string::npos)
+								std::cout << "Please add +i or -i to configure channel to invite only." << std::endl;
+							else
+								c.sendMessage(line);
+						}
+					}
+					else
+						std::cout << "Not enough arguments.\n";
+				}
+				else if (line.compare(0, 8, "/invite ") == 0) {
+					std::string channelName, targetUserName;
+					if(line.find(' ', 8) != std::string::npos){
+						channelName = line.substr(8, line.find(' ', 8)-8);
+						targetUserName = line.substr(line.find(' ', 8)+1, std::string::npos);
+						if(isValidChannelName(channelName) == 1)
+							c.sendMessage(line);
+						else
+							std::cout << "Invalid channel name." << std::endl << std::endl;
+					}
+					else
+						std::cout << "Not enough arguments.\n";
 				}
 				else {
     				std::cout << "Invalid command" << std::endl << std::endl;

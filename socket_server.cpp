@@ -11,7 +11,8 @@
 #define PORT 8080
 #define MESSAGE_SIZE 4096
 #define LOOP_INTERVAL 100
-#define MAX_CLIENTS 30
+#define MAX_CLIENTS 50
+#define MAX_USER_CHANNELS 10
 
 // Codes
 #define S_CONNECTION 1
@@ -33,7 +34,7 @@ public:
 	int setup();
 	int selectSocket();
 	int connectToNewClient(int *j, std::string& ip);
-	int sendMessage(std::string message, int socket_fd);
+	int sendMessageSocket(std::string message, int socket_fd);
 	void sendMessageUser(std::string message, int user);
 	int readMessage(void *buffer, int *clientIndex);
 };
@@ -41,16 +42,40 @@ public:
 class User
 {
 public:
+	User() {
+		channel = -1;
+		for (int i=0; i<MAX_USER_CHANNELS; i++)
+			allowed_channels[i] = -1;
+	}
+	int addAllowedChannel(int channelIndex) {
+		int i = 0;
+		while(this->allowed_channels[i] != -1) i++;
+		if(i<MAX_USER_CHANNELS) {
+			this->allowed_channels[i] = channelIndex;
+			return 0;
+		}
+		else
+			return -1;
+	}
 	std::string nickname;
 	std::string ip;
 	int channel;
+	int allowed_channels[MAX_USER_CHANNELS];
 };
 
 class Channel
 {
 public:
+	Channel(std::string name, int admin) {
+		this->name = name;
+		this->admin = admin;
+		this->inviteOnly = false;
+		for (int i = 0; i<MAX_CLIENTS; i++)
+			muted[i] = 0;
+	};
 	std::string name;
 	int admin;
+	bool inviteOnly;
 	int muted[MAX_CLIENTS];
 };
 
@@ -79,16 +104,16 @@ int main(int argc, char const *argv[])
 		// select a socket and get the activity type
 		activityType = s.selectSocket();
 
-		// check for new client connection
+		// Server received new connection
 		if (activityType == S_CONNECTION)
 		{
-			// Receive connection
+			// Accept connection
 			std::string ip;
 			if (s.connectToNewClient(&i, ip) >= 0) {
 				users[i].ip = ip;
 			}
 		}
-		// check for message
+		// Server received new Message
 		else if (activityType == S_MESSAGE)
 		{
 
@@ -105,21 +130,18 @@ int main(int argc, char const *argv[])
 				// check for commands
 				if (line.front() == '/')
 				{
-
-					// check for ping command
+					// dealing with command /PING
 					if (line.compare("/ping") == 0)
 					{
 						s.sendMessageUser("Server: pong", i);
 						std::cout << "Pong sent to user '" << users[i].nickname << "'" << std::endl
 								  << std::endl;
 					}
-					// check for join command
+
+					// dealing with command /JOIN
 					else if (line.compare(0, 6, "/join ") == 0)
 					{
-
-						// reset this user channel
-						users[i].channel = -1;
-
+						bool existentChannel = false;
 						// get the channel name
 						std::string channelName = line.substr(6, line.length());
 
@@ -128,25 +150,42 @@ int main(int argc, char const *argv[])
 						{
 							if (channels[j].name.compare(channelName) == 0)
 							{
-								users[i].channel = j;
-								std::cout << "User '" << users[i].nickname << "' joined the channel '" << channelName << "'" << std::endl
-										  << std::endl;
-								s.sendMessageUser("You joined the channel '" + channelName + "'", i);
+								existentChannel = true;
+								// Checking if user is allowed to join channel
+								bool joinAllowed = false;
+
+								// Check if channel is allowed
+								if(channels[j].inviteOnly == true){
+									for(int z=0; z<MAX_USER_CHANNELS; z++) {
+										if(users[i].allowed_channels[z] == j)
+											joinAllowed = true;
+									}
+									// Admin can always join
+									if(channels[j].admin == i)
+										joinAllowed = true;
+								}
+								else
+									joinAllowed = true;
+
+								// Joining channel
+								if(joinAllowed){
+									users[i].channel = j;
+									std::cout << "User '" << users[i].nickname << "' joined the channel '" << channelName << "'" << std::endl
+											<< std::endl;
+									s.sendMessageUser("You joined the channel '" + channelName + "'", i);
+								}
+								else 
+									s.sendMessageUser("You don't have permission to join this channel.", i);
+								break;
 							}
 						}
 
 						// if could not find the channel, create a new one
-						if (users[i].channel < 0)
+						if (!existentChannel)
 						{
-
 							// create and add the new channel
-							Channel newChannel;
-							newChannel.name = channelName;
-							newChannel.admin = i;
-							for (int j=0; j<MAX_CLIENTS; j++) 
-								newChannel.muted[j] = 0;
+							Channel newChannel(channelName, i);
 							channels.push_back(newChannel);
-
 							// link the user to the channel
 							users[i].channel = channels.size() - 1;
 							std::cout << "User '" << users[i].nickname << "' created and joined the channel '" << channelName << "'" << std::endl
@@ -154,7 +193,8 @@ int main(int argc, char const *argv[])
 							s.sendMessageUser("You created and joined the channel '" + channelName + "'", i);
 						}
 					}
-					// check nickname command
+
+					// dealing with commando /NICKNAME
 					else if (line.compare(0, 10, "/nickname ") == 0)
 					{
 						// new connection nickname
@@ -174,8 +214,9 @@ int main(int argc, char const *argv[])
 							s.sendMessageUser("Nickname changed to '" + users[i].nickname + "'", i);
 						}
 					}
+
 					// ********************************************************* ADMIN COMMANDS ********************************************************* //
-					// check kick command
+					// dealing with command /KICK
 					else if (line.compare(0, 6, "/kick ") == 0)
 					{
 						// check if user has joined a channel
@@ -207,7 +248,8 @@ int main(int argc, char const *argv[])
 							s.sendMessageUser("You must create your own channel before using admin commands ", i);
 						}
 					}
-					// check mute command
+
+					// dealing with command /MUTE
 					else if (line.compare(0, 6, "/mute ") == 0)
 					{
 						// check if user has joined a channel
@@ -238,7 +280,8 @@ int main(int argc, char const *argv[])
 							s.sendMessageUser("You must create your own channel before using admin commands ", i);
 						}
 					}
-					// check unmute command
+
+					// dealing with commando /UNMUTE
 					else if (line.compare(0, 8, "/unmute ") == 0)
 					{
 						// check if user has joined a channel
@@ -266,7 +309,8 @@ int main(int argc, char const *argv[])
 							}
 						}
 					}
-					// check whois command
+
+					// dealing with commando /WHOIS
 					else if (line.compare(0, 7, "/whois ") == 0)
 					{
 						// check if user has joined a channel
@@ -296,7 +340,94 @@ int main(int argc, char const *argv[])
 							s.sendMessageUser("You must create your own channel before using admin commands ", i);
 						}
 					}
+
+					// dealing with command /MODE
+					else if (line.compare(0, 6, "/mode ") == 0)
+					{
+						std::string channelName, arguments;
+						bool found = false;
+						// Separating string tokens
+						channelName = line.substr(6, line.find(' ', 6)-6);
+						arguments = line.substr(line.find(' ', 6), std::string::npos);
+						// Looking for the correct channel
+						for (int j = 0; j < channels.size(); j++) {
+							if (channels[j].name.compare(channelName) == 0) {
+								found = true;
+								// Testing if user is admin of said channel
+								if(channels[j].admin == i){
+									// Configuring said channel
+									if(arguments.find("+i") != std::string::npos){
+										channels[j].inviteOnly = true;
+										s.sendMessageUser("Channel " + channelName + " is now invite-only.", i);
+									}
+									else if (arguments.find("-i") != std::string::npos){
+										channels[j].inviteOnly = false;
+										s.sendMessageUser("Channel " + channelName + " is now not invite-only.", i);
+									}
+									else
+										s.sendMessageUser("No valid arguments.", i);
+									break;
+								}
+								else
+									s.sendMessageUser("You are not the admin of this channel", i);
+							}
+						}
+						if (!found) s.sendMessageUser("Channel not found.", i);
+					}
+
+					// dealing with command /INVITE
+					else if (line.compare(0, 8, "/invite ") == 0)
+					{
+						std::string channelName, targetUserName;
+						channelName = line.substr(8, line.find(' ', 8)-8);
+						targetUserName = line.substr(line.find(' ', 8)+1, std::string::npos);
+
+						// Find user
+						int userIndex = -1;
+						for (int j=0; j<MAX_CLIENTS; j++) {
+							if (users[j].nickname.compare(targetUserName) == 0) {
+								userIndex = j;
+								break;
+							}
+						}
+
+						// Valid username
+						if (userIndex != -1){
+							// Finding channel
+							int channelIndex = -1;
+							for (int j = 0; j < channels.size(); j++) {
+								if (channels[j].name.compare(channelName) == 0) {
+									channelIndex = j;
+									break;
+								}
+							}
+							// Channel doesn't already exist
+							if(channelIndex == -1) {
+								// Create channel
+								Channel newChannel(channelName, i);
+								newChannel.inviteOnly = true;
+								channels.push_back(newChannel);
+								// link the user to the channel
+								channelIndex = channels.size() - 1;
+								std::cout << "User '" << users[i].nickname << "' created the channel '" << channelName << "'." << std::endl
+										  << std::endl;
+								s.sendMessageUser("You created the channel '" + channelName + "' on an invite.", i);
+							}
+
+							if(channels[channelIndex].admin == i){
+								// Efetuate invite
+								users[userIndex].addAllowedChannel(channelIndex);
+								s.sendMessageUser("Invite sent successfully.", i);
+								s.sendMessageUser("You have been invited by " + users[i].nickname + " to the channel " + channelName + ".", userIndex);
+							}
+							else
+								s.sendMessageUser("You are not the admin of this channel", i);
+						}
+						else
+							s.sendMessageUser("User not found.", i);
+					}
 				}
+
 				// if it is not a command, it is a common text message
 				else
 				{
@@ -327,6 +458,9 @@ int main(int argc, char const *argv[])
 			{
 				// forget his nickname
 				users[i].nickname.clear();
+				users[i].ip.clear();
+				for(int j = 0; j<MAX_USER_CHANNELS; j++)
+					users[i].allowed_channels[j] = -1;
 
 				// remove his admin rights from any channels
 				for (int j = 0; j < channels.size(); j++)
@@ -461,7 +595,7 @@ int Server::connectToNewClient(int *j, std::string& ip)
 	ip = inet_ntoa(address.sin_addr);
 
 	// Sending welcome message
-	if (this->sendMessage("Welcome to IRC Kalinka!!", new_socket) <= 0)
+	if (this->sendMessageSocket("Welcome to IRC Kalinka!!", new_socket) <= 0)
 		std::cerr << "Error sending welcome message." << std::endl;
 
 	// Adding new connected socket to the list
@@ -476,7 +610,7 @@ int Server::connectToNewClient(int *j, std::string& ip)
 	return 0;
 }
 
-int Server::sendMessage(std::string message, int socket_fd)
+int Server::sendMessageSocket(std::string message, int socket_fd)
 {
 	return send(socket_fd, message.c_str(), message.length(), 0);
 }
