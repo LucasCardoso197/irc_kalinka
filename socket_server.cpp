@@ -43,9 +43,9 @@ class User
 {
 public:
 	User() {
-		channel = -1;
+		this->channel = -1;
 		for (int i=0; i<MAX_USER_CHANNELS; i++)
-			allowed_channels[i] = -1;
+			this->allowed_channels[i] = -1;
 	}
 	int addAllowedChannel(int channelIndex) {
 		int i = 0;
@@ -447,9 +447,14 @@ int main(int argc, char const *argv[])
 					// if the user is not in a channel, just explain it
 					else
 					{
-						std::cout << "User '" << users[i].nickname << "' has not joined a channel and can't send messages" << std::endl
+						if(users[i].channel < 0){
+							std::cout << "User '" << users[i].nickname << "' has not joined a channel and can't send messages" << std::endl
 								  << std::endl;
-						s.sendMessageUser("Please join a channel before sending messages", i);
+							s.sendMessageUser("Please join a channel before sending messages", i);
+
+						}
+						else
+							s.sendMessageUser("You are muted on " + channels[users[i].channel].name, i);
 					}
 				}
 			}
