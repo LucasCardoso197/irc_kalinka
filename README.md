@@ -10,7 +10,7 @@ Run server first, to listen for connections:
 Then run the client on another terminal:
 - make run_client
 
-You can run up to 30 client programs. Once they're all connected, messages can be exchanged between clients through the server.
+You can run up to 50 client programs. Once they're all connected, messages can be exchanged between clients through the server.
 
 General commands:
 - connect to server:
